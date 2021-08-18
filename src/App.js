@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import ImgApi from './ImgApi';
 import Searchbar from './Searchbar';
@@ -10,115 +10,97 @@ import  './App.module.css';
 
 
 
-class App extends Component {
-  static propTypes = {
-    hits: PropTypes.array,
-    searchQuery: PropTypes.string,
-    currentPage: PropTypes.number,
-    isLoading: PropTypes.bool,
-    showModal: PropTypes.bool,
-    tags: PropTypes.string,
-    error: PropTypes.string,
-    largeImageURL: PropTypes.string
-  }
+function App () {
+  const [hits, setHits] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [tags, setTags] = useState('');
+  const [error, setError] = useState('');
+  const [largeImageURL, setLargeImageURL] = useState('');
 
-  state = {
-    hits: [],
-    searchQuery: '',
-    currentPage: 1,
-    isLoading: false,
-    showModal: false,
-    tags: '',
-    error: '',
-    largeImageURL:''
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (prevState.searchQuery !== this.state.searchQuery) {
-      this.fetchHits()
-    }
-
-    if (this.state.searchQuery !== 2 && prevState.currentPage !== this.state.currentPage) {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
-  }
   
-  onChangeQuery = query => {
-    this.setState({
-      searchQuery: query,
-      currentPage: 1,
-      hits: [],
-      error: null
-    })
+  const onChangeQuery = query => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+    setHits([]);
+    setError(null);
   }
 
-  fetchHits = () => {
-    const { searchQuery, currentPage } = this.state;
-    const options = {
-      searchQuery,
-      currentPage
+  useEffect(() => {
+    if (!searchQuery) {
+      return
     }
+
+    setIsLoading(true);
     
-    this.setState({ isLoading: true })
-    
-    ImgApi(options).then(hits => {
-      this.setState(prevState => ({
-        hits: [...prevState.hits, ...hits],
-        currentPage:prevState.currentPage + 1
-      }))
+    ImgApi({ searchQuery: searchQuery, currentPage }).then(hits => {
+      setHits(prevState => [...prevState, ...hits]);
     })
-      .catch(error => this.setState({ error: 'No pictures found' })).finally(() => this.setState({
-        isLoading:false
-      }))
+      .then(() => {
+        window.scrollTo({
+          top: document.body.scrollHeight,
+          behavior: 'smooth',
+        });
+      })
+      .catch(error => setError({ error: 'No pictures found' })).finally(() => setIsLoading(false))
+    
+  }, [searchQuery, currentPage])
+  
+
+
+  const toggleModal = () => {
+    setLargeImageURL('')
   }
 
-
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal
-    }));
-  }
-
-  onOpenModalImg = (largeImageURL = '') => {
-    this.setState({largeImageURL});
-    this.toggleModal();
+  const onOpenModalImg = (largeImageURL) => {
+    setLargeImageURL(largeImageURL)
   };
 
 
-  render() {
-    const { hits, isLoading, showModal, largeImageURL, tags, error } = this.state;
-    return (
-      <>
-        <Searchbar
-          onSubmit={this.onChangeQuery}
+ 
+  return (
+    <>
+      <Searchbar
+        onSubmit={onChangeQuery}
+      />
+      {error && <p>{error}</p>}
+
+      <ImageGallery
+        hits={hits}
+        onOpenModalImg={onOpenModalImg}
+      />
+
+      {isLoading &&
+        <Loader />}
+      
+      {hits.length > 11 && !isLoading && (
+        <Button
+          onClick={()=>setCurrentPage(currentPage + 1) }
         />
-        {error && <p>{error}</p>}
+      )}
 
-        <ImageGallery
-          hits={hits}
-          onOpenModalImg={this.onOpenModalImg}
+      {largeImageURL && (
+        <Modal
+          src={largeImageURL}
+          alt={tags}
+          onClose={toggleModal}
         />
 
-        {isLoading &&
-          <Loader />}
-        {hits.length > 11 && !isLoading && (
-          <Button onClick={this.fetchHits}/>
-        )}
-
-        {showModal && (
-          <Modal
-            src={largeImageURL}
-            alt={tags}
-            onClose={this.onOpenModalImg}
-          />
-
-        )}
-      </>
-    )
-  }
+      )}
+    </>
+  )
 }
+
+App.propTypes = {
+  hits: PropTypes.array,
+  searchQuery: PropTypes.string,
+  currentPage: PropTypes.number,
+  isLoading: PropTypes.bool,
+  showModal: PropTypes.bool,
+  tags: PropTypes.string,
+  error: PropTypes.string,
+  largeImageURL: PropTypes.string
+};
 
 export default App;

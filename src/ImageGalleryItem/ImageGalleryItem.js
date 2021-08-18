@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import styles from './ImageGalleryItem.module.css'
 
-const ImageGalleryItem = ({webformatURL, onClick,tags})=> {
+const ImageGalleryItem = ({webformatURL, onClick, tags})=> {
     return (
         <li className={styles.ImageGalleryItem}>
             <img
